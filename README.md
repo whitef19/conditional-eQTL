@@ -11,9 +11,8 @@ Steps:
 
 Input files:
 *placenta_rnaseq.v1.1.clean.maternal_side.gene_reads.gct* and *placenta_rnaseq.v1.1.clean.maternal_side.gene_tpm.gct*
-located in */project/rrg-jacquesp-ab/Gen3G_share/data/freeze/placenta/rnaseq_v1.1*
 
-Following GTEx V8 steps https://github.com/broadinstitute/gtex-pipeline/tree/master/qtl
+Normalize RNA-seq data following GTEx V8 steps https://github.com/broadinstitute/gtex-pipeline/tree/master/qtl
 ```bash
 # env
 source /project/def-jacquesp/whitef/venv/mirqtl/bin/activate
@@ -21,12 +20,11 @@ module restore qtl
 unset R_LIBS
 
 # variables
-RNASEQ_DIR=/project/rrg-jacquesp-ab/Gen3G_share/data/freeze/placenta/rnaseq_v1.1
-MOM_GENOTYPE_DIR=/project/rrg-jacquesp-ab/Gen3G_share/data/freeze/genetic/chip_mothers_topmed
+
 
 rnaseq_samples=${RNASEQ_DIR}/scripts_and_refs/maternal_side_samples.txt
 mom_genotype_samples=${MOM_GENOTYPE_DIR}/scripts_and_refs/sample_european_unrelated_list.txt
-collapsed_annotation_gtf=/project/rrg-jacquesp-ab/Gen3G_share/data/ref/gencode/gencode.v30.annotation.collapsed.gtf
+collapsed_annotation_gtf=${ANNOTATION_PATH}/gencode.v30.annotation.collapsed.gtf
 prefix=data/placenta_rnaseq.normalized
 included_samples=data/sample_list_maternal_side_eur.txt
 
@@ -43,10 +41,9 @@ python3 eqtl_prepare_expression.py ${RNASEQ_DIR}/placenta_rnaseq.v1.1.clean.mate
 
 ```
 
-### 2) Compute expression PCs and add genetic PCs into one single dataset
+### 2) Compute expression PCs and add genetic PCs into one single file
 
 ```bash
-OFFSPRING_GENOTYPE_DIR=/project/rrg-jacquesp-ab/Gen3G_share/data/freeze/genetic/WGS_children_hg38_v1.0/
 Rscript run_pca.R data/placenta_rnaseq.normalized.expression.bed.gz data/known_variables.tsv ${MOM_GENOTYPE_DIR}/mothers.genetic_pcs.tsv ${OFFSPRING_GENOTYPE_DIR}/offsprings.genetic_pcs.tsv data/ 7 5 5 
 ```
 
@@ -68,7 +65,7 @@ cut -f2,7- data/moms_genotypes.traw | sed -E 's/_[0-9]*//g' > data/moms_genotype
 plink --bfile ${OFFSPRING_GENOTYPE_DIR}/plink/offsprings_rsid_allvar --extract data/all_leadSNP_v2.txt --recode A-transpose --out data/offspring_genotypes
 cut -f2,7- data/offspring_genotypes.traw | sed -E 's/_[0-9]*//g' > data/offspring_genotypes.dose.tsv
 
-### extract SNP positions
+### extract SNP positions and create +/- 500 kb windows
 awk '{OFS="\t"; print $1,$4,$2}' data/offspring_genotypes.traw > tmp
 awk '{OFS="\t"; print $1,$4,$2}' data/moms_genotypes.traw >> tmp
 sort tmp | uniq | sort -Vk1,2 | grep -v "CHR" | awk '{OFS="\t"; print "chr"$1, $2-500000, $2+500000,$3,$4}' > data/all_leadSNP_v2.flanked500kb.bed
